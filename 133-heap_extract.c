@@ -1,79 +1,68 @@
 #include "binary_trees.h"
 
 /**
- * max - Finds the maximum node in a tree.
- * @tree: The pointer to the root of the tree.
- * Return: The node with the maximum value.
+ * heap_insert - inserts a value in Max Binary Heap
+ * @root: a double pointer to the root node of the Heap to insert the value
+ * @value: the value to store in the node to be inserted
+ *
+ * Return: a pointer to the created node
+ *         NULL on failure
  */
-heap_t *max(heap_t *tree)
+heap_t *heap_insert(heap_t **root, int value)
 {
-	heap_t *curr_max, *left_max, *right_max;
+	heap_t *tree, *new, *flip;
+	int size, leaves, sub, bit, level, tmp;
 
-	if (!tree->left)
-		return (tree);
-	left_max = max(tree->left);
-	if (left_max->n > tree->n)
-		curr_max = left_max;
-	else
-		curr_max = tree;
-	if (tree->right)
+	if (!root)
+		return (NULL);
+	if (!(*root))
+		return (*root = binary_tree_node(NULL, value));
+	tree = *root;
+	size = binary_tree_size(tree);
+	leaves = size;
+	for (level = 0, sub = 1; leaves >= sub; sub *= 2, level++)
+		leaves -= sub;
+	/* subtract all nodes except for bottom-most level */
+
+	for (bit = 1 << (level - 1); bit != 1; bit >>= 1)
+		tree = leaves & bit ? tree->right : tree->left;
+	/*
+	 * Traverse tree to first empty slot based on the binary
+	 * representation of the number of leaves.
+	 * Example -
+	 * If there are 12 nodes in a complete tree, there are 5 leaves on
+	 * the 4th tier of the tree. 5 is 101 in binary. 1 corresponds to
+	 * right, 0 to left.
+	 * The first empty node is 101 == RLR, *root->right->left->right
+	 */
+
+	new = binary_tree_node(tree, value);
+	leaves & 1 ? (tree->right = new) : (tree->left = new);
+
+	flip = new;
+	for (; flip->parent && (flip->n > flip->parent->n); flip = flip->parent)
 	{
-		right_max = max(tree->right);
-		if (right_max->n > curr_max->n)
-			curr_max = right_max;
-		else
-			curr_max = tree;
+		tmp = flip->n;
+		flip->n = flip->parent->n;
+		flip->parent->n = tmp;
+		new = new->parent;
 	}
-	return (curr_max);
+	/* Flip values with parent until parent value exceeds new value */
+
+	return (new);
 }
 
 /**
- * recurse_extract - Recursively extracts the max from the tree.
- * @tree: The pointer to the root of the tree.
+ * binary_tree_size - measures the size of a binary tree
+ * @tree: tree to measure the size of
+ *
+ * Return: size of the tree
+ *         0 if tree is NULL
  */
-void recurse_extract(heap_t *tree)
+size_t binary_tree_size(const binary_tree_t *tree)
 {
-	heap_t *sub_max, *right_max = NULL;
-
-	if (!tree->left)
-		return;
-	sub_max = max((tree)->left);
-	if (tree->right)
-		right_max = max(tree->right);
-	if (right_max && right_max->n > sub_max->n)
-		sub_max = right_max;
-	tree->n = sub_max->n;
-	if (!sub_max->left)
-	{
-		if (sub_max->parent && sub_max->parent->left == sub_max)
-			sub_max->parent->left = NULL;
-		if (sub_max->parent && sub_max->parent->right == sub_max)
-			sub_max->parent->right = NULL;
-		free(sub_max);
-	}
-	else
-		recurse_extract(sub_max);
-}
-
-/**
- * heap_extract - Extracts the root from a Binary Heap.
- * @root: The pointer to the root of the tree.
- * Return: The value of the extracted node.
- */
-int heap_extract(heap_t **root)
-{
-	int value;
-
-	if (!*root)
+	if (!tree)
 		return (0);
-	value = (*root)->n;
-	if (!(*root)->left)
-	{
-		value = (*root)->n;
-		free(*root);
-		*root = NULL;
-		return (value);
-	}
-	recurse_extract(*root);
-	return (value);
+
+	return (binary_tree_size(tree->left) + binary_tree_size(tree->right) + 1);
 }
